@@ -62,7 +62,8 @@ class CommitPolicy(ScopedEnum):
 firestorm p core
 
 Dougall Johnson(DJ): https://dougallj.github.io/applecpu/firestorm.html
-Maynard Handley(MH) (Vol1: M1 Explainer) (Vol4: Instruction Fetch): https://github.com/name99-org/AArch64-Explore
+Maynard Handley(MH) (Vol1: M1 Explainer): https://github.com/name99-org/AArch64-Explore/blob/main/vol1%20M1%20Explainer.nb.pdf
+Maynard Handley(MH) (Vol4: Instruction Fetch): https://github.com/name99-org/AArch64-Explore/blob/main/Vol4%20Instruction%20Fetch.nb.pdf
 Dougall Johnson(DJ) blog: https://dougallj.wordpress.com/2021/04/08/apple-m1-load-and-store-queue-measurements/
 S2C paper: https://www.usenix.org/system/files/usenixsecurity23-yu-jiyong.pdf
 
