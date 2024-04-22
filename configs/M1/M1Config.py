@@ -51,7 +51,7 @@ system.system_port = system.membus.cpu_side_ports
 system.mem_ctrl = MemCtrl()
 system.mem_ctrl.dram = (
     DDR4_2400_8x8()
-)  # Wikipedia, M1 uses LPDDR4X, the closest I found was DDR4
+)  # Wikipedia, M1 uses LPDDR4X, the closest I found was DDR4 after comparing bandwidth
 system.mem_ctrl.dram.range = system.mem_ranges[0]
 system.mem_ctrl.port = system.membus.mem_side_ports
 
