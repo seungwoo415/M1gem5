@@ -58,7 +58,17 @@ class CommitPolicy(ScopedEnum):
     vals = ["RoundRobin", "OldestReady"]
 
 
-# firestorm p core
+"""
+firestorm p core
+
+Dougall Johnson(DJ): https://dougallj.github.io/applecpu/firestorm.html
+Maynard Handley(MH) (Vol1: M1 Explainer) (Vol4: Instruction Fetch): https://github.com/name99-org/AArch64-Explore
+Dougall Johnson(DJ) blog: https://dougallj.wordpress.com/2021/04/08/apple-m1-load-and-store-queue-measurements/
+S2C paper: https://www.usenix.org/system/files/usenixsecurity23-yu-jiyong.pdf
+
+"""
+
+
 class BaseO3CPU(BaseCPU):
     type = "BaseO3CPU"
     cxx_class = "gem5::o3::CPU"
@@ -98,7 +108,7 @@ class BaseO3CPU(BaseCPU):
     commitToFetchDelay = Param.Cycles(1, "Commit to detch delay")
     fetchWidth = Param.Unsigned(
         8, "Fetch width"
-    )  # in dj, decode width is 8 so reasonable that 8 uops per fetch
+    )  # DJ, "pipeline overview" diagram shows decode width is 8 --> reasonable to have a fetch width that is similar
     fetchBufferSize = Param.Unsigned(64, "Fetch buffer size in bytes")
     fetchQueueSize = Param.Unsigned(
         32, "Fetch queue size in micro-ops per-thread"
@@ -109,7 +119,9 @@ class BaseO3CPU(BaseCPU):
     )
     commitToDecodeDelay = Param.Cycles(1, "Commit to decode delay")
     fetchToDecodeDelay = Param.Cycles(1, "Fetch to decode delay")
-    decodeWidth = Param.Unsigned(8, "Decode width")  # dj 8 uops for decode
+    decodeWidth = Param.Unsigned(
+        8, "Decode width"
+    )  # DJ, "pipeline overview" diagram shows decode width is 8
     iewToRenameDelay = Param.Cycles(
         1, "Issue/Execute/Writeback to rename " "delay"
     )
@@ -117,8 +129,8 @@ class BaseO3CPU(BaseCPU):
     decodeToRenameDelay = Param.Cycles(1, "Decode to rename delay")
     renameWidth = Param.Unsigned(
         8, "Rename width"
-    )  # dj Map and Rename takes in 8 uops, mh mentions that rename and decode has same width
-
+    )  # DJ, "pipeline overview" diagram shows "Map and Rename" takes in 8 uops
+    # MH page 30, rename and decode has same width
     commitToIEWDelay = Param.Cycles(
         1, "Commit to Issue/Execute/Writeback delay"
     )
@@ -130,13 +142,13 @@ class BaseO3CPU(BaseCPU):
     )
     dispatchWidth = Param.Unsigned(
         8, "Dispatch width"
-    )  # dj all dispatch queue widths are set to 8 uops
+    )  # DJ,  "pipeline overview" diagram has all dispatch queue widths are set to 8 uops
     issueWidth = Param.Unsigned(
         1, "Issue width"
-    )  # dj all schedulers issue 1 uops
+    )  # DJ, "pipeline overview" diagram has all schedulers issue 1 uops
     wbWidth = Param.Unsigned(
         1, "Writeback width"
-    )  # all writeback widths are set to 1 uops, not specified in dj but assumed that it is the same as the issue width
+    )  # Not specified in DJ nor MH but assumed that it is the same as the issue width
     fuPool = Param.FUPool(
         DefaultFUPool(), "Functional Unit pool"
     )  # checked FuncUnitConfig.py file and count is relatively the same as the number of functional units in dj
@@ -147,22 +159,24 @@ class BaseO3CPU(BaseCPU):
     renameToROBDelay = Param.Cycles(1, "Rename to reorder buffer delay")
     commitWidth = Param.Unsigned(
         7, "Commit width"
-    )  # dj mentions uops are coalesces into retire groups(7 uops)
-    squashWidth = Param.Unsigned(8, "Squash width")  # keep at default
+    )  # DJ, "Completion, and the Reorder Buffer(ROB)" section mentions uops are coalesces into retire groups up to 7 uops
+    squashWidth = Param.Unsigned(8, "Squash width")
     trapLatency = Param.Cycles(13, "Trap latency")
     fetchTrapLatency = Param.Cycles(1, "Fetch trap latency")
 
     backComSize = Param.Unsigned(
-        17, "Time buffer size for backwards communication"
-    )  # keep at default
+        20, "Time buffer size for backwards communication"
+    )  # increased time buffer to 20 as increase in size of other stages require a larger time buffer size
     forwardComSize = Param.Unsigned(
-        17, "Time buffer size for forward communication"
-    )  # keep at default
+        20, "Time buffer size for forward communication"
+    )
 
     LQEntries = Param.Unsigned(
-        188, "Number of load queue entries"
-    )  # MH shows a measurement graph
-    SQEntries = Param.Unsigned(60, "Number of store queue entries")  # DJ
+        130, "Number of load queue entries"
+    )  # DJ Blog, "Fighting Stores with Square-Roots" section mentions load queues were measured to have 130 entries
+    SQEntries = Param.Unsigned(
+        60, "Number of store queue entries"
+    )  # DJ Blog, "Fighting Stores with Square-Roots" section mentions store queues were measured to have 60 entries
     LSQDepCheckShift = Param.Unsigned(
         4, "Number of places to shift addr before check"
     )
@@ -181,36 +195,34 @@ class BaseO3CPU(BaseCPU):
 
     numRobs = Param.Unsigned(
         1, "Number of Reorder Buffers"
-    )  # dj mentions that one reorder buffer is used
+    )  # DJ, "Completion, and the Reorder Buffer(ROB)" mentions that Firestorm uses an unconventional reorder buffer
 
     numPhysIntRegs = Param.Unsigned(
         380, "Number of physical integer registers"
-    )  # dj
+    )  # DJ, "Other limits" section mentions the integer physical register file size is 380-394
     numPhysFloatRegs = Param.Unsigned(
         216, "Number of physical floating point registers"
-    )  # dj mentions FP/SIMD physical registers = 432
+    )  # DJ, "Other limits" section mentions FP/SIMD physical register file is 432 --> divided into 2
     numPhysVecRegs = Param.Unsigned(
         216, "Number of physical vector registers"
-    )  # dj mentions FP/SIMD physical registers = 432
+    )  # DJ, "Other limits" section mentions FP/SIMD physical register file is 432 --> divided into 2
     numPhysVecPredRegs = Param.Unsigned(
         32, "Number of physical predicate registers"
     )
-
     numPhysMatRegs = Param.Unsigned(2, "Number of physical matrix registers")
-    # most ISAs don't use condition-code regs, so default is 0
     numPhysCCRegs = Param.Unsigned(
         128, "Number of physical cc registers"
-    )  # dj flags physical register file size
+    )  # DJ, "Other limits" section mentions flags physical register file size is 128
     numIQEntries = Param.Unsigned(
         120, "Number of instruction queue entries"
-    )  # mh mentions 120 entries for the instruction queue
+    )  # MH Vol4 page 5, mentions 120 entries for the instruction queue
     numROBEntries = Param.Unsigned(
         330, "Number of reorder buffer entries"
-    )  # MH mentions ROB has 330 rows
+    )  # MH Vol1 page 113, mentions ROB has 330 rows with 7 instructions each, but only one slot is used
 
     smtNumFetchingThreads = Param.Unsigned(
         1, "SMT Number of Fetching Threads"
-    )  # s2c mentions m1 doesn't implement smt
+    )  # S2C paper page 4, mentions m1 doesn't implement smt --> left as default
     smtFetchPolicy = Param.SMTFetchPolicy("RoundRobin", "SMT Fetch policy")
     smtLSQPolicy = Param.SMTQueuePolicy(
         "Partitioned", "SMT LSQ Sharing Policy"
@@ -225,256 +237,9 @@ class BaseO3CPU(BaseCPU):
     smtCommitPolicy = Param.CommitPolicy("RoundRobin", "SMT Commit Policy")
 
     branchPred = Param.BranchPredictor(
-        LTAGE(
+        TAGE(
             numThreads=Parent.numThreads
-        ),  # mh explains about a patent from apple on TAGE branch predictor
+        ),  # MH Vol4 page 53, explains about a reduced power TAGE branch predictor
         "Branch Predictor",
     )
-    needsTSO = Param.Bool(False, "Enable TSO Memory model")  # arm processor
-
-    # icestorm e core
-
-
-# class BaseO3CPU(BaseCPU):
-#         type = "BaseO3CPU"
-#         cxx_class = "gem5::o3::CPU"
-#         cxx_header = "cpu/o3/dyn_inst.hh"
-
-#         @classmethod
-#         def memory_mode(cls):
-#             return timing
-
-#         @classmethod
-#         def require_caches(cls):
-#             return true
-
-#         @classmethod
-#         def support_take_over(cls):
-#             return true
-
-#         activity = Param.Unsigned(0, "Initial count")
-
-#         cacheStorePorts = Param.Unsigned(200, "Cache Ports. "
-#                 "Constrains stores only. Loads are constrained by load FUs.")
-
-#         cacheLoadPorts = Param.Unsigned(200, "Validation Ports. "
-#                 "Constrains validations only. Loads are constrained by load FUs.")
-
-#         decodeToFetchDelay = Param.Cycles(1, "Decode to fetch delay")
-#         renameToFetchDelay = Param.Cycles(1, "Rename to fetch delay")
-#         iewToFetchDelay = Param.Cycles(1, "Issue/Execute/Writeback to fetch "
-#                                        "delay")
-#         commitToFetchDelay = Param.Cycles(1, "Commit to detch delay")
-#         fetchWidth = Param.Unsigned(8, "Fetch width")
-#         fetchBufferSize = Param.Unsigned(64, "Fetch buffer size in bytes")
-#         fetchQueueSize = Param.Unsigned(
-#         32, "Fetch queue size in micro-ops per-thread"
-#         )
-#         renameToDecodeDelay = Param.Cycles(1, "Rename to decode delay")
-#         iewToDecodeDelay = Param.Cycles(1, "Issue/Execute/Writeback to decode "
-#                                     "delay")
-#         commitToDecodeDelay = Param.Cycles(1, "Commit to decode delay")
-#         fetchToDecodeDelay = Param.Cycles(1, "Fetch to decode delay")
-#         decodeWidth = Param.Unsigned(8, "Decode width")
-#         iewToRenameDelay = Param.Cycles(1, "Issue/Execute/Writeback to rename "
-#                                     "delay")
-#         commitToRenameDelay = Param.Cycles(1, "Commit to rename delay")
-#         decodeToRenameDelay = Param.Cycles(1, "Decode to rename delay")
-#         renameWidth = Param.Unsigned(8, "Rename width")
-
-#         commitToIEWDelay = Param.Cycles(1, "Commit to Issue/Execute/Writeback delay")
-#         renameToIEWDelay = Param.Cycles(2, "Rename to Issue/Execute/Writeback delay")
-#         issueToExecuteDelay = Param.Cycles(1, "Issue to execute delay (internal to the IEW stage)")
-#         dispatchWidth = Param.Unsigned(8, "Dispatch width")
-#         issueWidth = Param.Unsigned(1, "Issue width")
-#         wbWidth = Param.Unsigned(1, "Writeback width")
-#         fuPool = Param.FUPool(DefaultFUPool(), "Functional Unit pool")
-
-#         iewToCommitDelay = Param.Cycles(1, "Issue/Execute/Writeback to commit delay")
-#         renameToROBDelay = Param.Cycles(1, "Rename to reorder buffer delay")
-#         commitWidth = Param.Unsigned(4, "Commit width") # dj mentions the retired uops per cycle is 4
-#         squashWidth = Param.Unsigned(8, "Squash width")
-#         trapLatency = Param.Cycles(13, "Trap latency")
-#         fetchTrapLatency = Param.Cycles(1, "Fetch trap latency")
-
-#         backComSize = Param.Unsigned(5, "Time buffer size for backwards communication")
-#         forwardComSize = Param.Unsigned(5, "Time buffer size for forward communication")
-
-#         LQEntries = Param.Unsigned(30
-#                                    , "Number of load queue entries") # DJ (different from p core)
-#         SQEntries = Param.Unsigned(18, "Number of store queue entries") # DJ (different from p core)
-#         LSQDepCheckShift = Param.Unsigned(4, "Number of places to shift addr before check")
-#         LSQCheckLoads = Param.Bool(
-#             True,
-#             "Should dependency violations be checked for "
-#             "loads & stores or just stores",
-#         )
-#         store_set_clear_period = Param.Unsigned(
-#             250000,
-#             "Number of load/store insts before the dep predictor "
-#             "should be invalidated",
-#         )
-#         LFSTSize = Param.Unsigned(1024, "Last fetched store table size")
-#         SSITSize = Param.Unsigned(1024, "Store set ID table size")
-
-#         numRobs = Param.Unsigned(1, "Number of Reorder Buffers")
-
-#         numPhysIntRegs = Param.Unsigned(79, "Number of physical integer registers") # dj
-#         numPhysFloatRegs = Param.Unsigned(43, "Number of physical floating point registers") # dj mentions FP/SIMD physical registers = 87
-#         numPhysVecRegs = Param.Unsigned(43, "Number of physical vector registers") # dj mentions FP/SIMD physical registers = 87
-#         numPhysVecPredRegs = Param.Unsigned(32, "Number of physical predicate registers")
-
-#         numPhysMatRegs = Param.Unsigned(2, "Number of physical matrix registers")
-#         # most ISAs don't use condition-code regs, so default is 0
-#         numPhysCCRegs = Param.Unsigned(128, "Number of physical cc registers")
-#         numIQEntries = Param.Unsigned(120, "Number of instruction queue entries")
-#         numROBEntries = Param.Unsigned(330, "Number of reorder buffer entries")
-
-#         smtNumFetchingThreads = Param.Unsigned(1, "SMT Number of Fetching Threads")
-#         smtFetchPolicy = Param.SMTFetchPolicy("RoundRobin", "SMT Fetch policy")
-#         smtLSQPolicy = Param.SMTQueuePolicy("Partitioned", "SMT LSQ Sharing Policy")
-#         smtLSQThreshold = Param.Int(100, "SMT LSQ Threshold Sharing Parameter")
-#         smtIQPolicy = Param.SMTQueuePolicy("Partitioned", "SMT IQ Sharing Policy")
-#         smtIQThreshold = Param.Int(100, "SMT IQ Threshold Sharing Parameter")
-#         smtROBPolicy = Param.SMTQueuePolicy("Partitioned", "SMT ROB Sharing Policy")
-#         smtROBThreshold = Param.Int(100, "SMT ROB Threshold Sharing Parameter")
-#         smtCommitPolicy = Param.CommitPolicy("RoundRobin", "SMT Commit Policy")
-
-#         branchPred = Param.BranchPredictor(LTAGE(numThreads = Parent.numThreads),
-#                                        "Branch Predictor")
-#         needsTSO = Param.Bool(False, "Enable TSO Memory model")
-
-
-# class BaseO3CPU(BaseCPU):
-#     type = "BaseO3CPU"
-#     cxx_class = "gem5::o3::CPU"
-#     cxx_header = "cpu/o3/dyn_inst.hh"
-
-#     @classmethod
-#     def memory_mode(cls):
-#         return "timing"
-
-#     @classmethod
-#     def require_caches(cls):
-#         return True
-
-#     @classmethod
-#     def support_take_over(cls):
-#         return True
-
-#     activity = Param.Unsigned(0, "Initial count")
-
-#     cacheStorePorts = Param.Unsigned(
-#         200, "Cache Ports. Constrains stores only."
-#     )
-#     cacheLoadPorts = Param.Unsigned(200, "Cache Ports. Constrains loads only.")
-
-#     decodeToFetchDelay = Param.Cycles(1, "Decode to fetch delay")
-#     renameToFetchDelay = Param.Cycles(1, "Rename to fetch delay")
-#     iewToFetchDelay = Param.Cycles(1, "Issue/Execute/Writeback to fetch delay")
-#     commitToFetchDelay = Param.Cycles(1, "Commit to fetch delay")
-#     fetchWidth = Param.Unsigned(8, "Fetch width")
-#     fetchBufferSize = Param.Unsigned(64, "Fetch buffer size in bytes")
-#     fetchQueueSize = Param.Unsigned(
-#         32, "Fetch queue size in micro-ops per-thread"
-#     )
-
-#     renameToDecodeDelay = Param.Cycles(1, "Rename to decode delay")
-#     iewToDecodeDelay = Param.Cycles(
-#         1, "Issue/Execute/Writeback to decode delay"
-#     )
-#     commitToDecodeDelay = Param.Cycles(1, "Commit to decode delay")
-#     fetchToDecodeDelay = Param.Cycles(1, "Fetch to decode delay")
-#     decodeWidth = Param.Unsigned(8, "Decode width")
-
-#     iewToRenameDelay = Param.Cycles(
-#         1, "Issue/Execute/Writeback to rename delay"
-#     )
-#     commitToRenameDelay = Param.Cycles(1, "Commit to rename delay")
-#     decodeToRenameDelay = Param.Cycles(1, "Decode to rename delay")
-#     renameWidth = Param.Unsigned(8, "Rename width")
-
-#     commitToIEWDelay = Param.Cycles(
-#         1, "Commit to Issue/Execute/Writeback delay"
-#     )
-#     renameToIEWDelay = Param.Cycles(
-#         2, "Rename to Issue/Execute/Writeback delay"
-#     )
-#     issueToExecuteDelay = Param.Cycles(
-#         1, "Issue to execute delay (internal to the IEW stage)"
-#     )
-#     dispatchWidth = Param.Unsigned(8, "Dispatch width")
-#     issueWidth = Param.Unsigned(8, "Issue width")
-#     wbWidth = Param.Unsigned(8, "Writeback width")
-#     fuPool = Param.FUPool(DefaultFUPool(), "Functional Unit pool")
-
-#     iewToCommitDelay = Param.Cycles(
-#         1, "Issue/Execute/Writeback to commit delay"
-#     )
-#     renameToROBDelay = Param.Cycles(1, "Rename to reorder buffer delay")
-#     commitWidth = Param.Unsigned(8, "Commit width")
-#     squashWidth = Param.Unsigned(8, "Squash width")
-#     trapLatency = Param.Cycles(13, "Trap latency")
-#     fetchTrapLatency = Param.Cycles(1, "Fetch trap latency")
-
-#     backComSize = Param.Unsigned(
-#         5, "Time buffer size for backwards communication"
-#     )
-#     forwardComSize = Param.Unsigned(
-#         5, "Time buffer size for forward communication"
-#     )
-
-#     LQEntries = Param.Unsigned(32, "Number of load queue entries")
-#     SQEntries = Param.Unsigned(32, "Number of store queue entries")
-#     LSQDepCheckShift = Param.Unsigned(
-#         4, "Number of places to shift addr before check"
-#     )
-#     LSQCheckLoads = Param.Bool(
-#         True,
-#         "Should dependency violations be checked for "
-#         "loads & stores or just stores",
-#     )
-#     store_set_clear_period = Param.Unsigned(
-#         250000,
-#         "Number of load/store insts before the dep predictor "
-#         "should be invalidated",
-#     )
-#     LFSTSize = Param.Unsigned(1024, "Last fetched store table size")
-#     SSITSize = Param.Unsigned(1024, "Store set ID table size")
-
-#     numRobs = Param.Unsigned(1, "Number of Reorder Buffers")
-
-#     numPhysIntRegs = Param.Unsigned(
-#         256, "Number of physical integer registers"
-#     )
-#     numPhysFloatRegs = Param.Unsigned(
-#         256, "Number of physical floating point registers"
-#     )
-#     numPhysVecRegs = Param.Unsigned(256, "Number of physical vector registers")
-#     numPhysVecPredRegs = Param.Unsigned(
-#         32, "Number of physical predicate registers"
-#     )
-#     numPhysMatRegs = Param.Unsigned(2, "Number of physical matrix registers")
-#     # most ISAs don't use condition-code regs, so default is 0
-#     numPhysCCRegs = Param.Unsigned(0, "Number of physical cc registers")
-#     numIQEntries = Param.Unsigned(64, "Number of instruction queue entries")
-#     numROBEntries = Param.Unsigned(192, "Number of reorder buffer entries")
-
-#     smtNumFetchingThreads = Param.Unsigned(1, "SMT Number of Fetching Threads")
-#     smtFetchPolicy = Param.SMTFetchPolicy("RoundRobin", "SMT Fetch policy")
-#     smtLSQPolicy = Param.SMTQueuePolicy(
-#         "Partitioned", "SMT LSQ Sharing Policy"
-#     )
-#     smtLSQThreshold = Param.Int(100, "SMT LSQ Threshold Sharing Parameter")
-#     smtIQPolicy = Param.SMTQueuePolicy("Partitioned", "SMT IQ Sharing Policy")
-#     smtIQThreshold = Param.Int(100, "SMT IQ Threshold Sharing Parameter")
-#     smtROBPolicy = Param.SMTQueuePolicy(
-#         "Partitioned", "SMT ROB Sharing Policy"
-#     )
-#     smtROBThreshold = Param.Int(100, "SMT ROB Threshold Sharing Parameter")
-#     smtCommitPolicy = Param.CommitPolicy("RoundRobin", "SMT Commit Policy")
-
-#     branchPred = Param.BranchPredictor(
-#         TournamentBP(numThreads=Parent.numThreads), "Branch Predictor"
-#     )
-#     needsTSO = Param.Bool(False, "Enable TSO Memory model")
+    needsTSO = Param.Bool(False, "Enable TSO Memory model")
